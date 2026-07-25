@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AI Browser Agent</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h2>Autonomous AI Browser Agent</h2>
+
+    <div class="input-group">
+      <label for="apiKey">OpenRouter API Key:</label>
+      <input type="password" id="apiKey" placeholder="sk-or-v1-..." />
+    </div>
+
+    <div class="input-group">
+      <label for="taskInput">Task Input:</label>
+      <textarea id="taskInput" placeholder="Enter natural language task (e.g. 'Open google.com and search for kittens, click first link')"></textarea>
+    </div>
+
+    <div class="button-group">
+      <button id="startBtn" class="btn btn-start">Start</button>
+      <button id="stopBtn" class="btn btn-stop">Emergency Stop</button>
+    </div>
+
+    <div class="status-container">
+      <h3>Status / Console</h3>
+      <div id="statusOutput" class="status-box">Ready</div>
+    </div>
+  </div>
+  <script src="popup.js" type="module"></script>
+  <!-- Load self-test to expose runSelfTests functionality in popup console context -->
+  <script src="selftest.js" type="module"></script>
+</body>
+</html>
