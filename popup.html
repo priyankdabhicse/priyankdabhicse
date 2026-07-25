@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Autonomous AI Agent</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-area">
+        <span class="icon">🤖</span>
+        <h1>AI Browser Agent</h1>
+      </div>
+      <p class="subtitle">Autonomous Web Operator & Self-Healer</p>
+    </header>
+
+    <main>
+      <!-- API Configuration Block -->
+      <section class="card">
+        <label for="apiKey">OpenRouter API Key</label>
+        <input type="password" id="apiKey" placeholder="sk-or-..." autocomplete="current-password" required>
+      </section>
+
+      <!-- Task Input Block -->
+      <section class="card">
+        <label for="task">Describe Your Task</label>
+        <textarea id="task" placeholder="e.g. Go to Google, search 'Autonomous Agent', and store the page text" rows="3" required></textarea>
+      </section>
+
+      <!-- Operation Actions (Exact requested layout) -->
+      <div class="actions">
+        <button id="startBtn" class="btn btn-primary">Start Task</button>
+        <button id="stopBtn" class="btn btn-danger">Emergency Stop</button>
+      </div>
+
+      <!-- Task Activity Logs and Status Monitoring -->
+      <section class="card progress-section">
+        <div class="section-title">
+          <span>Active Operations & Logs</span>
+          <button id="clearBtn" class="btn-text">Clear Tasks</button>
+        </div>
+
+        <div id="taskList" class="task-list">
+          <p class="empty-state">No tasks created yet.</p>
+        </div>
+      </section>
+
+      <!-- IndexedDB Stored Assets Section -->
+      <section class="card assets-section">
+        <div class="section-title">
+          <span>IndexedDB Stored Assets</span>
+          <button id="refreshAssetsBtn" class="btn-text">Refresh</button>
+        </div>
+        <div id="assetList" class="asset-list">
+          <p class="empty-state">No local assets stored.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <p>Operates entirely locally under MV3 securely.</p>
+    </footer>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

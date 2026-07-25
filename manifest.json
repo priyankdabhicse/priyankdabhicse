@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "Autonomous AI Browser Agent",
+  "version": "1.0.0",
+  "description": "An autonomous AI Browser Agent extension powered by OpenRouter with auto-debugging, token-efficient recovery, and IndexedDB local storage.",
+  "permissions": [
+    "tabs",
+    "tabGroups",
+    "debugger",
+    "scripting",
+    "unlimitedStorage",
+    "storage"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "minimum_chrome_version": "102.0"
+}
