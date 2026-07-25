@@ -8,6 +8,7 @@ let currentCommandIndex = 0;
 let commandsList = [];
 let currentCommandObj = null;
 let openRouterApiKey = "";
+let lastConsoleError = "";
 
 const mainSystemPrompt = `You are an expert AI Browser Agent.
 Your task is to convert natural language instructions into a structured sequence of executable browser commands.
@@ -48,7 +49,7 @@ async function callOpenRouter(messages) {
     throw new Error("OpenRouter API key is missing. Please set it in the extension settings.");
   }
 
-  const model = "google/gemini-2.5-pro";
+  const model = "google/gemini-2.5-flash";
 
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -111,21 +112,15 @@ chrome.debugger.onEvent.addListener(async (source, method, params) => {
   if (isExecutionHalted) return;
   if (source.tabId !== activeTabId) return;
 
-  let errorDetected = null;
-
   if (method === "Console.messageAdded") {
     const message = params.message;
-    // Log console errors as info/warning, but do not aggressively trigger auto-recovery unless it is fatal to our operations.
     if (message.level === "error") {
-      console.warn(`[Debugger Page Warning/Error]: ${message.text} at ${message.url || 'unknown'}`);
+      lastConsoleError = `Console Error: ${message.text} at ${message.url || 'unknown'}`;
     }
   } else if (method === "Runtime.exceptionThrown") {
     const exceptionDetails = params.exceptionDetails;
     const desc = exceptionDetails.exception ? (exceptionDetails.exception.description || exceptionDetails.text) : exceptionDetails.text;
-    errorDetected = `Exception: ${desc}`;
-
-    await logStatus(`[CRITICAL] Runtime Exception captured on page: ${errorDetected}`);
-    await handleExecutionError(errorDetected);
+    lastConsoleError = `Exception: ${desc}`;
   }
 });
 
@@ -248,13 +243,22 @@ async function runTaskSequence() {
     currentCommandObj = commandsList[currentCommandIndex];
     await logStatus(`[Step ${currentCommandIndex + 1}/${commandsList.length}] Executing: ${JSON.stringify(currentCommandObj)}`);
 
+    // Clear last console error state to ensure fresh capture per step
+    lastConsoleError = "";
+
     try {
       await executeSingleCommand(currentCommandObj);
       currentCommandIndex++;
     } catch (error) {
       if (isExecutionHalted) return;
-      await logStatus(`[ERROR] Failed command: ${JSON.stringify(currentCommandObj)}. Error: ${error.message}`);
-      await handleExecutionError(error.message);
+
+      // Combine custom execution error with the latest console error if available
+      const fullErrorText = lastConsoleError
+        ? `${error.message} (Page Console: ${lastConsoleError})`
+        : error.message;
+
+      await logStatus(`[ERROR] Failed command: ${JSON.stringify(currentCommandObj)}. Error: ${fullErrorText}`);
+      await handleExecutionError(fullErrorText);
       return;
     }
   }
@@ -357,18 +361,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
 
         await logStatus(`Starting task: "${task}"`);
-
-        const tab = await chrome.tabs.create({ url: "about:blank" });
-        activeTabId = tab.id;
-
-        const groupId = await chrome.tabs.group({ tabIds: [activeTabId] });
-        tabGroupId = groupId;
-        await chrome.tabGroups.update(groupId, { title: `Task: ${task.substring(0, 15)}...`, color: "blue" });
-
-        await logStatus(`Created tab group for task. Active Tab ID: ${activeTabId}`);
-        await attachDebugger(activeTabId);
-
         await logStatus("Sending task to OpenRouter for parsing...");
+
         const mainPrompt = [
           {
             role: "system",
@@ -396,12 +390,34 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         if (isExecutionHalted) return;
 
-        if (!Array.isArray(parsedCommands)) {
-          throw new Error("OpenRouter did not return a valid array of commands.");
+        if (!Array.isArray(parsedCommands) || parsedCommands.length === 0) {
+          throw new Error("OpenRouter did not return a valid non-empty array of commands.");
         }
 
         commandsList = parsedCommands;
         currentCommandIndex = 0;
+
+        // Determine initial navigation URL or default to google.com
+        let initialUrl = "https://www.google.com";
+        if (commandsList[0] && commandsList[0].command === "navigate" && commandsList[0].url) {
+          initialUrl = commandsList[0].url;
+          if (!/^https?:\/\//i.test(initialUrl)) {
+            initialUrl = "https://" + initialUrl;
+          }
+        }
+
+        await logStatus(`Initializing Chrome tab group...`);
+        const tab = await chrome.tabs.create({ url: initialUrl });
+        activeTabId = tab.id;
+
+        const groupId = await chrome.tabs.group({ tabIds: [activeTabId] });
+        tabGroupId = groupId;
+        await chrome.tabGroups.update(groupId, { title: `Task: ${task.substring(0, 15)}...`, color: "blue" });
+
+        await logStatus(`Created tab group. Active Tab ID: ${activeTabId}`);
+        await attachDebugger(activeTabId);
+
+        await waitForTabComplete(activeTabId);
 
         await runTaskSequence();
 
