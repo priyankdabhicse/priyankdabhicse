@@ -13,14 +13,16 @@ We also provide the following async helper functions pre-defined in your scope. 
 4. typeText(selector, text): Promise - waits for element, clears it, types text character-by-character, and fires change/input events. Example: await typeText('input[name="q"]', 'hello world');
 5. getPageText(): Promise<string> - returns the visible text content of the page.
 6. storeInDB(key, data, mimeType): Promise - stores an asset (such as text, base64 data, or images) to IndexedDB. Example: await storeInDB('task_result', 'some text');
+7. navigateTo(url): Promise - navigates to the specified URL and triggers page change.
 
-Rules:
+Idempotency & Multi-step Navigation Rules:
+- If the task requires navigating to a starting website (e.g., google.com), ALWAYS check if the current URL 'window.location.href' is already on that website.
+- If the current page is NOT yet on the starting website, call 'await navigateTo(url);' and immediately exit the execution loop (e.g., 'return;').
+- Designing your code with 'if/else' checks based on the current page's 'window.location.href' or page elements is critical. This ensures that when your script is re-run or retried during self-healing, it doesn't get stuck in a loop trying to perform step 1 on step 2's page.
+- Keep your script clean, fast, and fully synchronous/asynchronous utilizing the provided helpers.
 - Output ONLY the raw executable JavaScript code.
 - Do NOT wrap your output in markdown code blocks (such as \`\`\`javascript ... \`\`\`).
-- Output code that uses async/await at the top level (the environment supports top-level await).
-- Be extremely reliable. Handle any potential loading times or dynamic elements using the helpers.
-- Once completed, you can return a final string result or simply finish.
-- Avoid using chrome.* APIs directly inside the page context, as this runs in the webpage context. Use DOM and helper APIs.`;
+- Output code that uses async/await at the top level.`;
 
 const activeTasks = new Map();
 
@@ -61,17 +63,39 @@ function updatePopup() {
   });
 }
 
+/**
+ * Helper utility to block execution until target tab achieves 'complete' loading status.
+ */
+function waitForTabToLoad(tabId) {
+  return new Promise((resolve) => {
+    chrome.tabs.get(tabId, (tab) => {
+      if (tab && tab.status === 'complete') {
+        resolve();
+        return;
+      }
+      const listener = (updatedTabId, changeInfo) => {
+        if (updatedTabId === tabId && changeInfo.status === 'complete') {
+          chrome.tabs.onUpdated.removeListener(listener);
+          resolve();
+        }
+      };
+      chrome.tabs.onUpdated.addListener(listener);
+    });
+  });
+}
+
 // Debugger Event Listener to capture runtime console errors & exception logs
 chrome.debugger.onEvent.addListener(async (source, method, params) => {
-  // Capture any bindings (e.g., storeInDB calling sendToExtension)
+  // Capture any bindings (e.g., storeInDB or navigateTo calling sendToExtension)
   if (method === "Runtime.bindingCalled" && params.name === "sendToExtension") {
     try {
       const payload = JSON.parse(params.payload);
+
+      // Handle storage save
       if (payload.action === 'store') {
         await storeAsset(payload.key, payload.value, payload.mimeType || '');
         console.log(`Successfully stored ${payload.key} in Extension IndexedDB`);
 
-        // Find matching task and log the save event
         for (const [id, task] of activeTasks.entries()) {
           if (task.tabId === source.tabId) {
             task.logs.push(`Asset saved to local storage: ${payload.key}`);
@@ -80,6 +104,21 @@ chrome.debugger.onEvent.addListener(async (source, method, params) => {
           }
         }
       }
+
+      // Handle navigation trigger
+      if (payload.action === 'navigate') {
+        console.log(`Navigation request received for tab ${source.tabId} to url: ${payload.url}`);
+        for (const [id, task] of activeTasks.entries()) {
+          if (task.tabId === source.tabId) {
+            task.logs.push(`Navigating to URL: ${payload.url}`);
+            saveTasksToStorage();
+            updatePopup();
+          }
+        }
+        await chrome.tabs.update(source.tabId, { url: payload.url });
+        await waitForTabToLoad(source.tabId);
+      }
+
     } catch (err) {
       console.error('Error handling sendToExtension binding:', err);
     }
@@ -171,7 +210,6 @@ async function startTask(taskText, apiKey) {
   const taskId = Date.now().toString();
 
   // 1. Group all related tabs into a new Chrome Tab Group for this specific task
-  // Create a starting blank tab (or Google) to initialize group isolation
   const tab = await chrome.tabs.create({ url: 'https://www.google.com' });
   const groupId = await chrome.tabs.group({ tabIds: [tab.id] });
   await chrome.tabGroups.update(groupId, {
@@ -186,7 +224,7 @@ async function startTask(taskText, apiKey) {
     status: 'running',
     tabId: tab.id,
     groupId: groupId,
-    logs: ['Task initialized.', 'Created a dedicated Chrome Tab Group for isolating this task.'],
+    logs: ['Task initialized.', 'Created a dedicated Chrome Tab Group for isolating this task.', 'Waiting for page load completion...'],
     lastCode: '',
     retryCount: 0,
     lastConsoleError: null,
@@ -194,6 +232,12 @@ async function startTask(taskText, apiKey) {
   };
 
   activeTasks.set(taskId, task);
+  await saveTasksToStorage();
+  updatePopup();
+
+  // Block execution until Google or blank loading completes
+  await waitForTabToLoad(tab.id);
+  task.logs.push("Page loaded successfully.");
   await saveTasksToStorage();
   updatePopup();
 
@@ -252,6 +296,9 @@ async function runTaskLoop(taskId) {
       try {
         task.lastConsoleError = null; // reset console error tracker
 
+        // Ensure tab is complete prior to script injections
+        await waitForTabToLoad(task.tabId);
+
         // Run code via DevTools Protocol Runtime.evaluate
         const result = await chrome.debugger.sendCommand(
           { tabId: task.tabId },
@@ -284,12 +331,23 @@ async function runTaskLoop(taskId) {
       } catch (err) {
         if (task.isStopping) break;
 
+        // Ignore temporary navigation target disruptions or page relocations
+        const msg = err.message || "";
+        if (msg.includes("Inspected target navigated") || msg.includes("Execution context was destroyed") || msg.includes("context was destroyed")) {
+          task.logs.push("Page transition detected. Waiting for document load to stabilize and resume execution...");
+          await saveTasksToStorage();
+          updatePopup();
+          await waitForTabToLoad(task.tabId);
+          await delay(1500);
+          continue; // rerun the loop on the newly navigated page
+        }
+
         task.retryCount++;
         task.logs.push(`Error executing command (Attempt ${task.retryCount}): ${err.message}`);
         await saveTasksToStorage();
         updatePopup();
 
-        if (task.retryCount > 3) {
+        if (task.retryCount > 4) {
           task.logs.push("Maximum retry limit exceeded. Script halted.");
           task.status = 'error';
           await safeDetachDebugger(task.tabId);
@@ -329,6 +387,7 @@ async function askOpenRouter(originalTask, apiKey, failedCode = null, errorText 
     // Strict, minimal token-saving payload containing ONLY the failed command & console error text
     systemPrompt = `You are an expert AI browser automation debugger.
 Your only job is to return corrected, raw, executable JavaScript code that fixes the specific error provided.
+Always output idempotent, robust, multi-step safe code. Check current 'window.location.href' before executing steps.
 Do NOT output explanations. Do NOT wrap code in markdown. Output ONLY the raw executable JavaScript.`;
 
     userPrompt = `Failed Code:
@@ -422,6 +481,10 @@ async function stopSpecificTask(taskId) {
   }
 }
 
+async function delay(ms) {
+  return new Promise(res => setTimeout(res, ms));
+}
+
 function executionWrapper(llmCode) {
   return `
 (async () => {
@@ -475,6 +538,17 @@ function executionWrapper(llmCode) {
       return "Saved asset: " + key;
     } else {
       throw new Error("sendToExtension binding is not available in page context");
+    }
+  };
+
+  const navigateTo = async (url) => {
+    if (typeof sendToExtension === 'function') {
+      sendToExtension(JSON.stringify({ action: 'navigate', url }));
+      // Wait for navigation disruption to occur
+      await delay(3000);
+    } else {
+      window.location.href = url;
+      await delay(3000);
     }
   };
 
