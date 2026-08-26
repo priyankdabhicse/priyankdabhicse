@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subway Surfers Bot AI</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header Section -->
+    <header class="app-header">
+      <div class="logo-title">
+        <div class="bot-icon">⚡</div>
+        <div class="title-wrap">
+          <h1>Subway Surfers AI</h1>
+          <span class="sub-title">Autonomous Path Planner</span>
+        </div>
+      </div>
+      <div id="statusBadge" class="status-badge offline">BOT: OFFLINE</div>
+    </header>
+
+    <!-- Main Action Controls -->
+    <section class="control-grid">
+      <button id="btnStart" class="btn btn-primary">Start Bot</button>
+      <button id="btnStop" class="btn btn-danger" disabled>Stop Bot</button>
+      <button id="btnPause" class="btn btn-secondary" disabled>Pause</button>
+      <button id="btnResume" class="btn btn-secondary" disabled>Resume</button>
+    </section>
+
+    <!-- Auto Detect Bar -->
+    <div class="detect-bar">
+      <button id="btnAutoDetect" class="btn btn-outline">🔍 Auto Detect Game</button>
+    </div>
+
+    <!-- Settings & Parameters -->
+    <section class="settings-section">
+      <h3>Configuration</h3>
+
+      <div class="setting-item">
+        <label for="controlMethod">Control Method</label>
+        <select id="controlMethod" class="select-input">
+          <option value="auto">Auto Detect</option>
+          <option value="keyboard">Keyboard (Arrows / WASD)</option>
+          <option value="touch">Simulated Touch / Swipe</option>
+        </select>
+      </div>
+
+      <div class="setting-item">
+        <div class="label-val-row">
+          <label for="reactionSpeed">Reaction Speed</label>
+          <span id="speedValue" class="val-badge">85ms</span>
+        </div>
+        <input type="range" id="reactionSpeed" min="1" max="100" value="85" class="slider">
+      </div>
+
+      <div class="setting-item">
+        <label for="safetyLevel">Safety Level</label>
+        <select id="safetyLevel" class="select-input">
+          <option value="low">Low (Aggressive / Coin Hunter)</option>
+          <option value="medium">Medium (Balanced)</option>
+          <option value="high" selected>High (Safety First)</option>
+          <option value="ultra">Ultra (Maximum Survival)</option>
+        </select>
+      </div>
+
+      <div class="setting-item">
+        <label for="hideUiMode">Hide Static Elements</label>
+        <select id="hideUiMode" class="select-input">
+          <option value="original">Original View</option>
+          <option value="gameOnly">Game Only</option>
+          <option value="hideEverything">Hide Everything Possible</option>
+        </select>
+      </div>
+
+      <div class="toggle-group">
+        <label class="toggle-item">
+          <input type="checkbox" id="debugMode" checked>
+          <span class="toggle-label">Debug Mode (HUD Overlay)</span>
+        </label>
+        <label class="toggle-item">
+          <input type="checkbox" id="showStats" checked>
+          <span class="toggle-label">Show Live Statistics</span>
+        </label>
+      </div>
+    </section>
+
+    <!-- Footer Information -->
+    <footer class="app-footer">
+      <span>Manifest V3 • Autonomous Agent</span>
+    </footer>
+  </div>
+
+  <script src="settings.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>
