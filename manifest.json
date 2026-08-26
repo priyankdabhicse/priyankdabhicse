@@ -1,0 +1,57 @@
+{
+  "manifest_version": 3,
+  "name": "Subway Surfers Bot AI",
+  "version": "1.0.0",
+  "description": "Autonomous AI game agent and path planner for playing Subway Surfers on Poki.",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.poki.com/*",
+    "https://*.poki-gdn.com/*",
+    "https://*.poki.io/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.poki.com/*",
+        "https://*.poki-gdn.com/*",
+        "https://*.poki.io/*"
+      ],
+      "js": [
+        "settings.js",
+        "controller.js",
+        "detector.js",
+        "planner.js",
+        "ui.js",
+        "content.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*"],
+      "matches": ["https://*.poki.com/*", "https://*.poki-gdn.com/*", "https://*.poki.io/*"]
+    }
+  ]
+}
