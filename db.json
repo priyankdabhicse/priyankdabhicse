@@ -1,0 +1,10 @@
+{
+  "devices": {
+    "test-device-123": {
+      "isPaid": false,
+      "history": {
+        "2026-08-26": 1
+      }
+    }
+  }
+}

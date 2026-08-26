@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PriceFinder India - Instant Cross-Platform Price Scraper</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-container">
+    <header class="header">
+      <div class="logo">
+        <span class="icon">🏷️</span>
+        <span class="title">PriceFinder</span>
+      </div>
+      <div class="usage-badge" id="usageBadge">
+        Loading limit...
+      </div>
+    </header>
+
+    <main class="main-content">
+      <section class="hero-section">
+        <h1>Compare Product Prices Across India in Seconds</h1>
+        <p>Paste any Amazon, Flipkart, Meesho, Myntra, or online product link to automatically extract details & find the lowest price.</p>
+
+        <form class="search-form" id="scrapeForm">
+          <div class="input-wrapper">
+            <input
+              type="url"
+              id="productUrl"
+              placeholder="Paste product link here (e.g. https://www.amazon.in/dp/B08N5WRWNW)..."
+              required
+            >
+            <button type="submit" id="submitBtn">
+              <span>Compare Prices</span>
+              <span class="spinner hidden" id="btnSpinner"></span>
+            </button>
+          </div>
+        </form>
+
+        <div class="quick-links">
+          <span>Supported Platforms:</span>
+          <span class="tag">Amazon.in</span>
+          <span class="tag">Flipkart</span>
+          <span class="tag">Meesho</span>
+          <span class="tag">Myntra</span>
+          <span class="tag">Reliance Digital</span>
+          <span class="tag">Tata CLiQ</span>
+        </div>
+      </section>
+
+      <!-- Status / Loader -->
+      <section class="status-section hidden" id="statusSection">
+        <div class="pipeline-loader">
+          <div class="pipeline-step active" id="step1">1. Fetching URL</div>
+          <div class="pipeline-step" id="step2">2. Extracting Details</div>
+          <div class="pipeline-step" id="step3">3. Searching Platforms</div>
+          <div class="pipeline-step" id="step4">4. Normalizing Prices</div>
+          <div class="pipeline-step" id="step5">5. Sorting Lowest First</div>
+        </div>
+      </section>
+
+      <!-- Scraped Product Details & Results Table -->
+      <section class="results-section hidden" id="resultsSection">
+        <div class="product-card" id="productCard">
+          <img src="" id="productImg" alt="Product Image" class="product-img">
+          <div class="product-info">
+            <h2 id="productTitle">Product Title</h2>
+            <div class="product-meta">
+              <span class="badge" id="productBrand">Brand</span>
+              <span class="source-domain" id="sourceDomain">Source: Amazon.in</span>
+            </div>
+            <div class="source-price" id="sourcePrice">Original Price: ₹0</div>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <h3>Cross-Platform Price Comparison</h3>
+          <table class="price-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Platform</th>
+                <th>Price</th>
+                <th>Delivery</th>
+                <th>Rating</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="resultsTableBody">
+              <!-- Dynamically populated -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- Payment Modal -->
+    <div class="modal-backdrop hidden" id="payModal">
+      <div class="modal">
+        <h2>Daily Search Limit Reached</h2>
+        <p>You have used your 5 free searches for today.</p>
+        <div class="price-box">
+          <span class="amount">₹100</span>
+          <span class="term">/ Unlimited Access</span>
+        </div>
+        <p class="subtext">Pay once and get unlimited instant searches on this device!</p>
+        <button class="pay-btn" id="payNowBtn">Pay ₹100 & Unlock Unlimited</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
